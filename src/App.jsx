@@ -11,6 +11,8 @@ import Perfil from "./pages/Perfil";
 import ConfigMovimiento from "./pages/ConfigMovimiento";
 import BancosPage from "./pages/BancosPage";
 import CuentaPage from "./pages/CuentaPage";
+import InvitacionesPage from "./pages/InvitacionesPage";
+import CuentaAccesosPage from "./pages/CuentaAccesosPage";
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -80,8 +82,8 @@ export default function App() {
               <Route path="/movements-groups/:groupId" element={<Movimientos />} />
               <Route path="/bancos" element={<BancosPage />} />
               <Route path="/cuentas/:cuentaId" element={<CuentaPage />} />
-              
-
+              <Route path="/cuentas/:cuentaId/accesos" element={<CuentaAccesosPage />} />
+              <Route path="/invitaciones" element={<InvitacionesPage />} />
             </Route>
 
             {/* redirect por defecto */}

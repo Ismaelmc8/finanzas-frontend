@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getBancos, createBanco, deleteBanco } from "../services/bancosService";
-import { createCuenta } from "../services/cuentasService";
+import { createCuenta, getCuentas } from "../services/cuentasService";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import toast from "react-hot-toast";
@@ -11,7 +11,8 @@ const TIPO_LABEL = { corriente: "Corriente", ahorro: "Ahorro", inversion: "Inver
 
 export default function BancosPage() {
   const navigate = useNavigate();
-  const [bancos, setBancos] = useState([]);
+  const [bancos,      setBancos]      = useState([]);
+  const [compartidas, setCompartidas] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [modalBanco, setModalBanco] = useState(false);
@@ -21,8 +22,9 @@ export default function BancosPage() {
 
   const cargar = async () => {
     try {
-      const data = await getBancos();
-      setBancos(data);
+      const [bancosData, cuentasData] = await Promise.all([getBancos(), getCuentas()]);
+      setBancos(bancosData);
+      setCompartidas(cuentasData.compartidas || []);
     } catch {
       toast.error("Error cargando cuentas");
     } finally {
@@ -137,6 +139,39 @@ export default function BancosPage() {
             )}
           </div>
         ))
+      )}
+
+      {/* Cuentas compartidas conmigo */}
+      {compartidas.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-base font-semibold text-gray-500 mb-3 flex items-center gap-2">
+            <span>👥</span> Compartidas conmigo
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {compartidas.map((cuenta) => (
+              <Card
+                key={cuenta.id}
+                className="p-5 cursor-pointer hover:shadow-lg transition rounded-2xl border border-gray-200 bg-white"
+                onClick={() => navigate(`/cuentas/${cuenta.id}`)}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <div>
+                    <p className="font-semibold text-gray-900">{cuenta.nombre}</p>
+                    <p className="text-xs text-gray-400">
+                      {cuenta.banco?.nombre} · {cuenta.propietario?.nombre}
+                    </p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block font-medium ${cuenta.rol === "editor" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>
+                      {cuenta.rol === "editor" ? "Editor" : "Lector"}
+                    </span>
+                  </div>
+                  <span className={`text-lg font-bold ${cuenta.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {cuenta.balance?.toFixed(2)} {cuenta.moneda}
+                  </span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Modal nuevo banco */}

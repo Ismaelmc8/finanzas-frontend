@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getCuenta } from "../services/cuentasService";
 import { getExpenses, addExpense, updateExpense, deleteExpense } from "../services/expensesService";
 import { deleteTraspaso } from "../services/traspasosService";
+import { getCategorias } from "../services/categoriasService";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import ExpensesChart from "../components/expenses/ExpensesChart";
@@ -13,7 +14,6 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import toast from "react-hot-toast";
 
-const CATEGORIES = ["Comida", "Transporte", "Ocio", "Salud", "Facturas", "Otros", "Salario", "Educación", "Ahorro"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const TIPO_LABEL = { corriente: "Corriente", ahorro: "Ahorro", inversion: "Inversión", otro: "Otro" };
 
@@ -21,9 +21,10 @@ export default function CuentaPage() {
   const { cuentaId } = useParams();
   const navigate = useNavigate();
 
-  const [cuenta, setCuenta] = useState(null);
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [cuenta,     setCuenta]     = useState(null);
+  const [rows,       setRows]       = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [loading,    setLoading]    = useState(true);
 
   const [open, setOpen] = useState(false);
   const [openTraspaso, setOpenTraspaso] = useState(false);
@@ -36,16 +37,31 @@ export default function CuentaPage() {
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterText, setFilterText] = useState("");
 
-  const categoriesFilter = ["Todas", ...CATEGORIES.sort()];
+  // Aplanar categorías (raíz + subcategorías) para filtros y formulario
+  const allCategoryNames = categorias.flatMap(c => [
+    c.nombre,
+    ...(c.subcategorias || []).map(s => s.nombre),
+  ]);
+  const categoriesFilter = ["Todas", ...allCategoryNames];
+
+  // Mapa nombre → color para las gráficas
+  const categoryColors = Object.fromEntries(
+    categorias.flatMap(c => [
+      [c.nombre, c.color],
+      ...(c.subcategorias || []).map(s => [s.nombre, s.color]),
+    ])
+  );
 
   const cargar = async () => {
     try {
-      const [cuentaData, expensesData] = await Promise.all([
+      const [cuentaData, expensesData, categoriasData] = await Promise.all([
         getCuenta(cuentaId),
         getExpenses(cuentaId),
+        getCategorias(),
       ]);
       setCuenta(cuentaData);
       setRows(expensesData.map(r => ({ ...r, date: new Date(r.date) })));
+      setCategorias(categoriasData);
     } catch {
       toast.error("Error cargando los datos");
     } finally {
@@ -128,6 +144,9 @@ export default function CuentaPage() {
   if (loading) return <p className="text-center mt-10 text-gray-500">Cargando...</p>;
   if (!cuenta) return <p className="text-center mt-10 text-red-500">Cuenta no encontrada</p>;
 
+  const esLector = cuenta.rol === "lector";
+  const esOwner  = cuenta.rol === "owner";
+
   return (
     <Card className="p-6 shadow-md rounded-2xl">
       {/* Cabecera */}
@@ -139,13 +158,28 @@ export default function CuentaPage() {
           <h1 className="text-xl font-bold text-gray-900">{cuenta.nombre}</h1>
           <p className="text-sm text-gray-400">
             {cuenta.banco?.nombre} · {TIPO_LABEL[cuenta.tipo]} · {cuenta.moneda}
+            {cuenta.rol && cuenta.rol !== "owner" && (
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${esLector ? "bg-gray-100 text-gray-600" : "bg-indigo-100 text-indigo-700"}`}>
+                {cuenta.rol === "editor" ? "Editor" : "Lector"}
+              </span>
+            )}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Balance</p>
-          <p className={`text-2xl font-bold ${cuenta.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
-            {cuenta.balance.toFixed(2)} {cuenta.moneda}
-          </p>
+        <div className="text-right flex flex-col items-end gap-2">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Balance</p>
+            <p className={`text-2xl font-bold ${cuenta.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {cuenta.balance.toFixed(2)} {cuenta.moneda}
+            </p>
+          </div>
+          {esOwner && (
+            <button
+              onClick={() => navigate(`/cuentas/${cuentaId}/accesos`)}
+              className="text-xs text-indigo-500 hover:underline"
+            >
+              ⚙ Gestionar accesos
+            </button>
+          )}
         </div>
       </div>
 
@@ -153,22 +187,26 @@ export default function CuentaPage() {
 
       {/* Acciones */}
       <div className="flex justify-end gap-2 mb-4">
-        <ImportExpensesButton extraData={{ cuentaId }} onImported={() => cargar()} />
-        <Button
-          className="bg-gray-100 text-gray-700 hover:bg-gray-200"
-          onClick={() => setOpenTraspaso(true)}
-        >
-          ↔ Traspaso
-        </Button>
-        <Button
-          onClick={() => {
-            setSelectedRow(null);
-            setFormData({ name: "", units: 1, price: 0, type: "gasto", category: CATEGORIES[0], date: new Date(), notes: "" });
-            setOpen(true);
-          }}
-        >
-          + Añadir
-        </Button>
+        {!esLector && <ImportExpensesButton extraData={{ cuentaId }} onImported={() => cargar()} />}
+        {!esLector && (
+          <Button
+            className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+            onClick={() => setOpenTraspaso(true)}
+          >
+            ↔ Traspaso
+          </Button>
+        )}
+        {!esLector && (
+          <Button
+            onClick={() => {
+              setSelectedRow(null);
+              setFormData({ name: "", units: 1, price: 0, type: "gasto", category: allCategoryNames[0] || "", date: new Date(), notes: "" });
+              setOpen(true);
+            }}
+          >
+            + Añadir
+          </Button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -224,7 +262,7 @@ export default function CuentaPage() {
                   <td className="py-3 px-3">{row.category || "—"}</td>
                   <td className="py-3 px-3 text-gray-500">{new Date(row.date).toLocaleDateString("es-ES")}</td>
                   <td className="py-3 px-3 flex gap-2">
-                    {row.type !== "traspaso" && (
+                    {row.type !== "traspaso" && !esLector && (
                       <button
                         className="text-blue-500 hover:text-blue-700"
                         onClick={() => { setSelectedRow(row); setFormData({ ...row, date: new Date(row.date) }); setOpen(true); }}
@@ -232,7 +270,9 @@ export default function CuentaPage() {
                         ✏️
                       </button>
                     )}
-                    <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(row)}>🗑️</button>
+                    {!esLector && (
+                      <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(row)}>🗑️</button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -241,7 +281,7 @@ export default function CuentaPage() {
         </table>
       </CardContent>
 
-      <ExpensesChart rows={filtered.filter(r => r.type === "gasto")} />
+      <ExpensesChart rows={filtered.filter(r => r.type === "gasto")} categoryColors={categoryColors} />
 
       {/* Modal nueva/editar transacción */}
       {open && (
@@ -263,8 +303,16 @@ export default function CuentaPage() {
                 <option value="ingreso">Ingreso</option>
               </select>
               <select className="w-full border rounded-lg p-2"
-                value={formData.category || CATEGORIES[0]} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                {CATEGORIES.sort().map(c => <option key={c} value={c}>{c}</option>)}
+                value={formData.category || allCategoryNames[0] || ""}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+                {categorias.map(cat => (
+                  <optgroup key={cat.id} label={`${cat.icono} ${cat.nombre}`}>
+                    <option value={cat.nombre}>{cat.nombre}</option>
+                    {(cat.subcategorias || []).map(sub => (
+                      <option key={sub.id} value={sub.nombre}>↳ {sub.nombre}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
               <DatePicker
                 selected={formData.date} onChange={(date) => setFormData({ ...formData, date })}

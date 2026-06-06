@@ -1,18 +1,26 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { getInvitaciones } from "../services/accesosService";
 
 export default function LayoutDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
   const location = useLocation();
 
-  // 🔹 Definimos las rutas dinámicamente
+  useEffect(() => {
+    getInvitaciones()
+      .then((inv) => setPendientes(inv.length))
+      .catch(() => {});
+  }, [location.pathname]);
+
   const routes = [
-    { path: "/dashboard", label: "Dashboard" },
-    { path: "/movimientos", label: "Movimientos" },
-    { path: "/bancos", label: "Cuentas" },
+    { path: "/dashboard",     label: "Dashboard" },
+    { path: "/movimientos",   label: "Movimientos" },
+    { path: "/bancos",        label: "Cuentas" },
+    { path: "/invitaciones",  label: "Invitaciones", badge: pendientes },
     { path: "/configMovements", label: "Configuración" },
-    { path: "/perfil", label: "Perfil" },
+    { path: "/perfil",        label: "Perfil" },
   ];
 
   // 🔹 Obtenemos el título de la página actual
@@ -33,9 +41,14 @@ export default function LayoutDashboard() {
             <Link
               key={route.path}
               to={route.path}
-              className="block px-6 py-2 text-gray-700 hover:bg-indigo-100 rounded-lg"
+              className="flex items-center justify-between px-6 py-2 text-gray-700 hover:bg-indigo-100 rounded-lg"
             >
-              {route.label}
+              <span>{route.label}</span>
+              {route.badge > 0 && (
+                <span className="bg-indigo-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {route.badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
