@@ -16,7 +16,11 @@ export const updateExpense = async (id, expense) => {
   return res.data;
 };
 
-export const deleteExpense = async (id) => {
-  const res = await api.delete(`/expenses/${id}`);
+export const deleteExpense = async (id, modo) => {
+  const params = modo ? `?modo=${modo}` : "";
+  const res = await api.delete(`/expenses/${id}${params}`);
   return res.data;
 };
+
+export const generarRecurrentes = () =>
+  api.post("/expenses/generar-recurrentes").then(r => r.data);

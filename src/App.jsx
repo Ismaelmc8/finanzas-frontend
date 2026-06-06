@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
 import { logout as apiLogout } from "./services/authService";
 import { Toaster } from "react-hot-toast";
+import { generarRecurrentes } from "./services/expensesService";
+import toast from "react-hot-toast";
 import Login from "./pages/Login_page";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -21,6 +23,15 @@ export default function App() {
   });
 
   const [token, setToken] = useState(() => localStorage.getItem("token") || null);
+
+  useEffect(() => {
+    if (!user) return;
+    generarRecurrentes()
+      .then(({ generadas }) => {
+        if (generadas > 0) toast.success(`${generadas} transacción${generadas > 1 ? "es recurrentes generadas" : " recurrente generada"}`);
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   const handleLogin = (userData) => {
     setUser(userData);

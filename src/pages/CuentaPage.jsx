@@ -31,6 +31,7 @@ export default function CuentaPage() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [formData, setFormData] = useState({});
   const [formError, setFormError] = useState("");
+  const [deleteModal, setDeleteModal] = useState(null);
 
   const [filterCategory, setFilterCategory] = useState("Todas");
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -82,6 +83,8 @@ export default function CuentaPage() {
         total: formData.units * formData.price,
         date: formData.date instanceof Date ? formData.date.toISOString() : formData.date,
         cuentaId: Number(cuentaId),
+        recurrente: formData.recurrente || false,
+        frecuencia: formData.recurrente ? (formData.frecuencia || "mensual") : null,
       };
       if (selectedRow) {
         await updateExpense(selectedRow.id, payload);
@@ -100,15 +103,23 @@ export default function CuentaPage() {
     }
   };
 
-  const handleDelete = async (row) => {
-    if (!confirm("¿Eliminar esta transacción?")) return;
+  const handleDelete = (row) => {
+    if (row.recurrente || row.recurrenciaId) {
+      setDeleteModal(row);
+    } else if (confirm("¿Eliminar esta transacción?")) {
+      ejecutarDelete(row, null);
+    }
+  };
+
+  const ejecutarDelete = async (row, modo) => {
+    setDeleteModal(null);
     try {
       if (row.type === "traspaso") {
         await deleteTraspaso(row.id);
         toast.success("Traspaso eliminado (se han revertido ambas cuentas)");
       } else {
-        await deleteExpense(row.id);
-        toast.success("Eliminada");
+        await deleteExpense(row.id, modo);
+        toast.success(modo === "cancelar" ? "Recurrencia cancelada" : "Eliminada");
       }
       cargar();
     } catch {
@@ -200,7 +211,7 @@ export default function CuentaPage() {
           <Button
             onClick={() => {
               setSelectedRow(null);
-              setFormData({ name: "", units: 1, price: 0, type: "gasto", category: allCategoryNames[0] || "", date: new Date(), notes: "" });
+              setFormData({ name: "", units: 1, price: 0, type: "gasto", category: allCategoryNames[0] || "", date: new Date(), notes: "", recurrente: false, frecuencia: "mensual" });
               setOpen(true);
             }}
           >
@@ -254,7 +265,11 @@ export default function CuentaPage() {
                   key={row.id}
                   className={`border-b last:border-0 hover:bg-gray-50 ${row.type === "traspaso" ? "opacity-70" : ""}`}
                 >
-                  <td className="py-3 px-3 font-medium">{row.name}</td>
+                  <td className="py-3 px-3 font-medium">
+                    {row.name}
+                    {row.recurrente && <span title="Plantilla recurrente" className="ml-1.5 text-indigo-400 text-xs">🔁</span>}
+                    {row.recurrenciaId && <span title="Generada automáticamente" className="ml-1.5 text-gray-400 text-xs">🔄</span>}
+                  </td>
                   <td className={`py-3 px-3 font-semibold ${totalColor(row)}`}>
                     {totalLabel(row)} {cuenta.moneda}
                   </td>
@@ -320,11 +335,69 @@ export default function CuentaPage() {
               />
               <textarea className="w-full border rounded-lg p-2" placeholder="Notas (opcional)"
                 value={formData.notes || ""} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+
+              {/* Recurrencia */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formData.recurrente || false}
+                    onChange={(e) => setFormData({ ...formData, recurrente: e.target.checked })}
+                  />
+                  <span className="font-medium">¿Es recurrente?</span>
+                </label>
+                {formData.recurrente && (
+                  <select
+                    className="w-full border rounded-lg p-2 text-sm"
+                    value={formData.frecuencia || "mensual"}
+                    onChange={(e) => setFormData({ ...formData, frecuencia: e.target.value })}
+                  >
+                    <option value="diario">Diario</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensual">Mensual</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                )}
+              </div>
+
               {formError && <p className="text-sm text-red-500">{formError}</p>}
             </div>
             <div className="flex justify-end gap-2 mt-5">
               <Button className="bg-gray-200 text-gray-700" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button onClick={handleSave}>Guardar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal eliminar recurrente */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg w-96">
+            <h2 className="text-lg font-semibold mb-1">Eliminar transacción recurrente</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              "{deleteModal.name}" está vinculada a una recurrencia.
+            </p>
+            <div className="space-y-2">
+              <button
+                className="w-full text-left border rounded-lg p-3 hover:bg-gray-50 text-sm transition"
+                onClick={() => ejecutarDelete(deleteModal, "ocurrencia")}
+              >
+                <span className="font-medium">Eliminar solo esta ocurrencia</span>
+                <p className="text-xs text-gray-400 mt-0.5">La recurrencia continuará generándose normalmente.</p>
+              </button>
+              <button
+                className="w-full text-left border border-red-100 rounded-lg p-3 hover:bg-red-50 text-sm transition"
+                onClick={() => ejecutarDelete(deleteModal, "cancelar")}
+              >
+                <span className="font-medium text-red-600">Cancelar la recurrencia</span>
+                <p className="text-xs text-gray-400 mt-0.5">No se generarán más. El historial anterior se mantiene.</p>
+              </button>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button className="bg-gray-200 text-gray-700" onClick={() => setDeleteModal(null)}>
+                Cerrar
+              </Button>
             </div>
           </div>
         </div>
