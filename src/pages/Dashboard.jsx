@@ -1,69 +1,111 @@
 import { useState, useEffect } from "react";
-import { getCuentas } from "../services/cuentasService";
-import { getExpenses } from "../services/expensesService";
-import PresupuestosPanel from "../components/presupuestos/PresupuestosPanel";
+import { getDashboard } from "../services/dashboardService";
 import { Card } from "../components/ui/Card";
+import KpiCard             from "../components/dashboard/KpiCard";
+import CuentasResumen      from "../components/dashboard/CuentasResumen";
+import AlertasPresupuesto  from "../components/dashboard/AlertasPresupuesto";
+import EvolucionChart      from "../components/dashboard/EvolucionChart";
+import GastosCategoriaChart from "../components/dashboard/GastosCategoriaChart";
+
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 export default function Dashboard() {
-  const [resumen, setResumen] = useState({ balance: 0, ingresos: 0, gastos: 0 });
+  const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(false);
 
   useEffect(() => {
-    const ahora   = new Date();
-    const mes     = ahora.getMonth() + 1;
-    const año     = ahora.getFullYear();
-
-    Promise.all([getCuentas(), getExpenses()])
-      .then(([cuentasData, txs]) => {
-        const propias = cuentasData.propias || [];
-        const balance = propias.reduce((s, c) => s + (c.balance || 0), 0);
-
-        const delMes = txs.filter(t => {
-          const d = new Date(t.date);
-          return d.getMonth() + 1 === mes && d.getFullYear() === año;
-        });
-        const ingresos = delMes.filter(t => t.type === "ingreso").reduce((s, t) => s + t.total, 0);
-        const gastos   = delMes.filter(t => t.type === "gasto").reduce((s, t)   => s + t.total, 0);
-
-        setResumen({ balance, ingresos, gastos });
-      })
-      .catch(() => {})
+    getDashboard()
+      .then(setData)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
-  const fmt = (n) => n.toFixed(2) + " €";
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Cargando dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-red-400">Error cargando el dashboard</p>
+      </div>
+    );
+  }
+
+  const mesNombre = MESES[new Date().getMonth()];
+  const fmt       = (n) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* ── Patrimonio total ─────────────────────────────────────────────── */}
+      <Card className="p-6 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-2xl shadow-md">
+        <p className="text-sm text-indigo-200 uppercase tracking-wide mb-1">Patrimonio neto total</p>
+        <p className="text-4xl font-bold">{fmt(data.patrimonioTotal)} €</p>
+        <p className="text-sm text-indigo-200 mt-1">{data.cuentas.length} cuenta{data.cuentas.length !== 1 ? "s" : ""} activa{data.cuentas.length !== 1 ? "s" : ""}</p>
+      </Card>
 
-      {/* Métricas del mes */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── KPIs del mes ─────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{mesNombre} — resumen del mes</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KpiCard
+            titulo="Ingresos"
+            valor={data.mesActual.ingresos}
+            diferencia={data.diferencias.ingresos}
+            invertir={false}
+          />
+          <KpiCard
+            titulo="Gastos"
+            valor={data.mesActual.gastos}
+            diferencia={data.diferencias.gastos}
+            invertir={true}
+          />
+          <KpiCard
+            titulo="Tasa de ahorro"
+            valor={data.mesActual.tasaAhorro}
+            diferencia={data.diferencias.tasaAhorro}
+            unidad="%"
+            invertir={false}
+          />
+        </div>
+      </div>
+
+      {/* ── Gráficas ──────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Balance total</p>
-          <p className={`text-2xl font-bold ${resumen.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
-            {loading ? "—" : fmt(resumen.balance)}
-          </p>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Gastos por categoría — {mesNombre}</h2>
+          <GastosCategoriaChart datos={data.gastosPorCategoria} />
         </Card>
         <Card className="p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Ingresos este mes</p>
-          <p className="text-2xl font-bold text-green-600">
-            {loading ? "—" : fmt(resumen.ingresos)}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Gastos este mes</p>
-          <p className="text-2xl font-bold text-red-500">
-            {loading ? "—" : fmt(resumen.gastos)}
-          </p>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Evolución últimos 6 meses</h2>
+          <EvolucionChart datos={data.evolucionMensual} />
         </Card>
       </div>
 
-      {/* Presupuestos */}
-      <Card className="p-5">
-        <h2 className="text-base font-semibold text-gray-800 mb-4">Presupuestos del mes</h2>
-        <PresupuestosPanel />
-      </Card>
+      {/* ── Cuentas + Alertas ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Mis cuentas</h2>
+          <CuentasResumen cuentas={data.cuentas} />
+        </Card>
+
+        {data.presupuestosAlerta.length > 0 && (
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">
+              Alertas de presupuesto
+              <span className="ml-2 text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-medium">
+                {data.presupuestosAlerta.length}
+              </span>
+            </h2>
+            <AlertasPresupuesto alertas={data.presupuestosAlerta} />
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
