@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getCategorias, createCategoria, updateCategoria, deleteCategoria } from "../services/categoriasService";
+import { getPresupuestos, createPresupuesto, updatePresupuesto, deletePresupuesto } from "../services/presupuestosService";
+import { getCuentas } from "../services/cuentasService";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import toast from "react-hot-toast";
@@ -8,8 +10,12 @@ const TIPO_LABEL = { gasto: "Gasto", ingreso: "Ingreso", ambos: "Ambos" };
 const TIPO_COLOR = { gasto: "bg-red-100 text-red-700", ingreso: "bg-green-100 text-green-700", ambos: "bg-indigo-100 text-indigo-700" };
 
 const FORM_DEFAULT = { nombre: "", tipo: "gasto", color: "#6366f1", icono: "📦", parentId: null };
+const PRES_DEFAULT = { categoriaId: "", importe: "", cuentaId: "" };
 
 export default function ConfigMovimiento() {
+  const [tab, setTab] = useState("categorias");
+
+  // ── Categorías ────────────────────────────────────────────
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [open, setOpen]             = useState(false);
@@ -17,11 +23,26 @@ export default function ConfigMovimiento() {
   const [form, setForm]             = useState(FORM_DEFAULT);
   const [error, setError]           = useState("");
 
+  // ── Presupuestos ──────────────────────────────────────────
+  const [presupuestos, setPresupuestos]   = useState([]);
+  const [cuentas,      setCuentas]        = useState([]);
+  const [openPres,     setOpenPres]       = useState(false);
+  const [selectedPres, setSelectedPres]   = useState(null);
+  const [formPres,     setFormPres]       = useState(PRES_DEFAULT);
+  const [errorPres,    setErrorPres]      = useState("");
+
   const cargar = async () => {
     try {
-      setCategorias(await getCategorias());
+      const [cats, pres, cuentasData] = await Promise.all([
+        getCategorias(),
+        getPresupuestos(),
+        getCuentas(),
+      ]);
+      setCategorias(cats);
+      setPresupuestos(pres);
+      setCuentas([...(cuentasData.propias || []), ...(cuentasData.compartidas || [])]);
     } catch {
-      toast.error("Error cargando categorías");
+      toast.error("Error cargando configuración");
     } finally {
       setLoading(false);
     }
@@ -72,14 +93,191 @@ export default function ConfigMovimiento() {
     }
   };
 
+  // ── Handlers presupuestos ─────────────────────────────────
+  const handleSavePres = async (e) => {
+    e.preventDefault();
+    setErrorPres("");
+    try {
+      const payload = {
+        categoriaId: Number(formPres.categoriaId),
+        importe:     Number(formPres.importe),
+        cuentaId:    formPres.cuentaId ? Number(formPres.cuentaId) : null,
+      };
+      if (selectedPres) {
+        await updatePresupuesto(selectedPres.id, { importe: payload.importe });
+        toast.success("Presupuesto actualizado");
+      } else {
+        await createPresupuesto(payload);
+        toast.success("Presupuesto creado");
+      }
+      setOpenPres(false);
+      setSelectedPres(null);
+      setFormPres(PRES_DEFAULT);
+      cargar();
+    } catch (err) {
+      setErrorPres(err?.response?.data?.error || "Error al guardar");
+    }
+  };
+
+  const handleDeletePres = async (p) => {
+    if (!confirm(`¿Eliminar el presupuesto de "${p.categoria?.nombre}"?`)) return;
+    try {
+      await deletePresupuesto(p.id);
+      toast.success("Presupuesto eliminado");
+      cargar();
+    } catch {
+      toast.error("Error al eliminar");
+    }
+  };
+
+  // ── Aplanar categorías para selector ──────────────────────
+  const todasCategorias = categorias.flatMap(c => [
+    c,
+    ...(c.subcategorias || []),
+  ]);
+
   if (loading) return <p className="text-center mt-10 text-gray-500">Cargando...</p>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Categorías</h1>
-        <Button onClick={() => abrirNueva()}>+ Nueva categoría</Button>
+      <h1 className="text-2xl font-bold text-gray-900">Ajustes</h1>
+
+      {/* Pestañas */}
+      <div className="flex border-b">
+        {["categorias", "presupuestos"].map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-5 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors ${
+              tab === t
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {t === "categorias" ? "Categorías" : "Presupuestos"}
+          </button>
+        ))}
       </div>
+
+      {/* ── Pestaña Presupuestos ── */}
+      {tab === "presupuestos" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setSelectedPres(null); setFormPres(PRES_DEFAULT); setErrorPres(""); setOpenPres(true); }}>
+              + Nuevo presupuesto
+            </Button>
+          </div>
+
+          {presupuestos.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <p className="text-4xl mb-3">🎯</p>
+              <p className="font-medium">Sin presupuestos</p>
+              <p className="text-sm mt-1">Define límites mensuales por categoría</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {presupuestos.map((p) => {
+                const pct = p.importe > 0 ? Math.min(Math.round((p.gastado / p.importe) * 100), 100) : 0;
+                const barColor = p.estado === "superado" ? "bg-red-500" : p.estado === "aviso" ? "bg-orange-400" : "bg-green-500";
+                return (
+                  <Card key={p.id} className="p-4 flex items-center gap-4">
+                    <span className="text-xl shrink-0">{p.categoria?.icono}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium text-gray-800">{p.categoria?.nombre}</span>
+                        <span className="text-gray-500">{p.gastado?.toFixed(2)} / {p.importe.toFixed(2)} €</span>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      {p.cuenta && <p className="text-xs text-gray-400 mt-0.5">{p.cuenta.nombre}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={() => { setSelectedPres(p); setFormPres({ categoriaId: p.categoriaId, importe: p.importe, cuentaId: p.cuentaId || "" }); setOpenPres(true); }}
+                        className="text-blue-500 hover:text-blue-700 px-1"
+                      >✏️</button>
+                      <button onClick={() => handleDeletePres(p)} className="text-red-400 hover:text-red-600 px-1">🗑️</button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Modal presupuesto */}
+          {openPres && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-xl shadow-lg w-96">
+                <h2 className="text-lg font-semibold mb-4">
+                  {selectedPres ? "Editar presupuesto" : "Nuevo presupuesto"}
+                </h2>
+                <form onSubmit={handleSavePres} className="space-y-3">
+                  {!selectedPres && (
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Categoría *</label>
+                      <select
+                        className="w-full border rounded-lg p-2 text-sm"
+                        value={formPres.categoriaId}
+                        onChange={e => setFormPres({ ...formPres, categoriaId: e.target.value })}
+                        required
+                      >
+                        <option value="">Seleccionar...</option>
+                        {categorias.map(cat => (
+                          <optgroup key={cat.id} label={`${cat.icono} ${cat.nombre}`}>
+                            <option value={cat.id}>{cat.nombre}</option>
+                            {(cat.subcategorias || []).map(sub => (
+                              <option key={sub.id} value={sub.id}>↳ {sub.nombre}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Límite mensual (€) *</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="w-full border rounded-lg p-2 text-sm"
+                      placeholder="Ej. 400"
+                      value={formPres.importe}
+                      onChange={e => setFormPres({ ...formPres, importe: e.target.value })}
+                      required
+                    />
+                  </div>
+                  {!selectedPres && (
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Cuenta (opcional)</label>
+                      <select
+                        className="w-full border rounded-lg p-2 text-sm"
+                        value={formPres.cuentaId}
+                        onChange={e => setFormPres({ ...formPres, cuentaId: e.target.value })}
+                      >
+                        <option value="">Todas las cuentas</option>
+                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {errorPres && <p className="text-sm text-red-500">{errorPres}</p>}
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button type="button" className="bg-gray-200 text-gray-700" onClick={() => setOpenPres(false)}>Cancelar</Button>
+                    <Button type="submit">Guardar</Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Pestaña Categorías ── */}
+      {tab === "categorias" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => abrirNueva()}>+ Nueva categoría</Button>
+          </div>
 
       {categorias.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
@@ -217,6 +415,8 @@ export default function ConfigMovimiento() {
               </div>
             </form>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>
