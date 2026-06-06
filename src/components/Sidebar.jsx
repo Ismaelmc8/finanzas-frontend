@@ -10,8 +10,7 @@ export default function LayoutDashboard() {
   const routes = [
     { path: "/dashboard", label: "Dashboard" },
     { path: "/movimientos", label: "Movimientos" },
-    //{ path: "/movements-groups/:groupId", label: "Grupos" },
-    { path: "/accounts", label: "Grupos" },
+    { path: "/bancos", label: "Cuentas" },
     { path: "/configMovements", label: "Configuración" },
     { path: "/perfil", label: "Perfil" },
   ];

@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import ExpensesChart from "../components/ExpensesChart";
-import Summary from "../components/Summary";
+import ExpensesChart from "../components/expenses/ExpensesChart";
+import ImportExpensesButton from "../components/expenses/ImportExpensesButton";
+import Summary from "../components/expenses/Summary";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -109,6 +110,11 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-semibold">Gastos</h1>
+         <ImportExpensesButton
+            extraData={{ context: "finances_excel", contextUuid: groupId }}
+            onImported={(newRows) => setRows((prev) => [...prev, ...newRows])}
+          />
+
         <Button
           className="rounded-xl"
           onClick={() => {

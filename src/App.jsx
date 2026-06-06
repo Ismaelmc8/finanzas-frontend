@@ -8,9 +8,8 @@ import PrivateLayout from "./layouts/PrivateLayout";
 import Movimientos from "./pages/Movimientos";
 import Perfil from "./pages/Perfil";
 import ConfigMovimiento from "./pages/ConfigMovimiento";
-import AccountsListPage from "./pages/AccountsListPage";
-import AccountCreatePage from "./pages/AccountCreatePage";
-//import AccountDetailPage from "./pages/AccountDetailPage";
+import BancosPage from "./pages/BancosPage";
+import CuentaPage from "./pages/CuentaPage";
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -77,14 +76,8 @@ export default function App() {
               <Route path="/perfil" element={<Perfil />} />
               <Route path="/configMovements" element={<ConfigMovimiento />} />
               <Route path="/movements-groups/:groupId" element={<Movimientos />} />
-              {/* 📘 Listado de cuentas */}
-              <Route path="/accounts" element={<AccountsListPage />} />
-
-              {/* ➕ Crear nueva cuenta */}
-              <Route path="/accounts/new" element={<AccountCreatePage />} />
-
-              {/* 📊 Detalle de una cuenta */}
-              <Route path="/accounts/:accountId" element={<Movimientos />} />
+              <Route path="/bancos" element={<BancosPage />} />
+              <Route path="/cuentas/:cuentaId" element={<CuentaPage />} />
               
 
             </Route>

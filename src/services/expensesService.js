@@ -1,8 +1,8 @@
-// services/expensesService.js
 import api from "./api";
 
-export const getExpenses = async () => {
-  const res = await api.get("/expenses");
+export const getExpenses = async (cuentaId) => {
+  const params = cuentaId ? { cuentaId } : {};
+  const res = await api.get("/expenses", { params });
   return res.data;
 };
 
