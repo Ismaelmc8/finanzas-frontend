@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
+import { logout as apiLogout } from "./services/authService";
 import { Toaster } from "react-hot-toast";
 import Login from "./pages/Login_page";
 import Register from "./pages/Register";
@@ -23,7 +24,8 @@ export default function App() {
     setUser(userData);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await apiLogout();
     setUser(null);
     setToken(null);
     localStorage.removeItem("user");
