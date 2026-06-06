@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api.js';
+import api from '../../services/api.js';
 
 function TransaccionForm() {
   const [transacciones, setTransacciones] = useState([]);
