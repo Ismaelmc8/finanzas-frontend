@@ -12,7 +12,9 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function ExpensesChart({ rows }) {
+const FALLBACK_COLORS = ["#4ade80","#60a5fa","#f87171","#fbbf24","#a78bfa","#34d399","#f472b6","#fb923c","#38bdf8","#a3e635"];
+
+export default function ExpensesChart({ rows, categoryColors = {} }) {
   if (!rows || rows.length === 0) {
     return (
       <div className="mt-8 bg-white p-4 rounded-xl shadow text-center text-gray-500">
@@ -45,8 +47,6 @@ export default function ExpensesChart({ rows }) {
     total: monthData[key],
   }));
 
-  const colors = ["#4ade80","#60a5fa","#f87171","#fbbf24","#a78bfa","#34d399","#f472b6"];
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
       <div className="bg-white p-4 rounded-xl shadow">
@@ -54,8 +54,11 @@ export default function ExpensesChart({ rows }) {
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie data={categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-              {categoryChartData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+              {categoryChartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={categoryColors[entry.name] || FALLBACK_COLORS[index % FALLBACK_COLORS.length]}
+                />
               ))}
             </Pie>
             <Tooltip />
