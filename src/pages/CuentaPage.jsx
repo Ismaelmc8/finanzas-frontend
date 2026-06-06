@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getCuenta } from "../services/cuentasService";
 import { getExpenses, addExpense, updateExpense, deleteExpense } from "../services/expensesService";
+import { deleteTraspaso } from "../services/traspasosService";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import ExpensesChart from "../components/expenses/ExpensesChart";
 import Summary from "../components/expenses/Summary";
 import ImportExpensesButton from "../components/expenses/importExpensesButton";
+import TraspasoForm from "../components/expenses/TraspasoForm";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import toast from "react-hot-toast";
@@ -24,6 +26,7 @@ export default function CuentaPage() {
   const [loading, setLoading] = useState(true);
 
   const [open, setOpen] = useState(false);
+  const [openTraspaso, setOpenTraspaso] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [formData, setFormData] = useState({});
   const [formError, setFormError] = useState("");
@@ -64,7 +67,6 @@ export default function CuentaPage() {
         date: formData.date instanceof Date ? formData.date.toISOString() : formData.date,
         cuentaId: Number(cuentaId),
       };
-
       if (selectedRow) {
         await updateExpense(selectedRow.id, payload);
         toast.success("Transacción actualizada");
@@ -82,11 +84,16 @@ export default function CuentaPage() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (row) => {
     if (!confirm("¿Eliminar esta transacción?")) return;
     try {
-      await deleteExpense(id);
-      toast.success("Eliminada");
+      if (row.type === "traspaso") {
+        await deleteTraspaso(row.id);
+        toast.success("Traspaso eliminado (se han revertido ambas cuentas)");
+      } else {
+        await deleteExpense(row.id);
+        toast.success("Eliminada");
+      }
       cargar();
     } catch {
       toast.error("Error al eliminar");
@@ -104,8 +111,19 @@ export default function CuentaPage() {
     return matchMonth && matchYear && matchCat && matchText;
   });
 
+  // Los traspasos no cuentan en el resumen de ingresos/gastos
   const ingresos = filtered.filter(r => r.type === "ingreso").reduce((s, r) => s + r.total, 0);
-  const gastos   = filtered.filter(r => r.type === "gasto").reduce((s, r) => s + r.total, 0);
+  const gastos   = filtered.filter(r => r.type === "gasto").reduce((s, r)   => s + r.total, 0);
+
+  const totalColor = (row) => {
+    if (row.type === "traspaso") return "text-gray-500";
+    return row.type === "ingreso" ? "text-green-600" : "text-red-600";
+  };
+
+  const totalLabel = (row) => {
+    if (row.type === "traspaso") return `↔ ${Math.abs(row.total).toFixed(2)}`;
+    return `${row.type === "ingreso" ? "+" : "-"}${Math.abs(row.total).toFixed(2)}`;
+  };
 
   if (loading) return <p className="text-center mt-10 text-gray-500">Cargando...</p>;
   if (!cuenta) return <p className="text-center mt-10 text-red-500">Cuenta no encontrada</p>;
@@ -135,10 +153,13 @@ export default function CuentaPage() {
 
       {/* Acciones */}
       <div className="flex justify-end gap-2 mb-4">
-        <ImportExpensesButton
-          extraData={{ cuentaId }}
-          onImported={() => cargar()}
-        />
+        <ImportExpensesButton extraData={{ cuentaId }} onImported={() => cargar()} />
+        <Button
+          className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+          onClick={() => setOpenTraspaso(true)}
+        >
+          ↔ Traspaso
+        </Button>
         <Button
           onClick={() => {
             setSelectedRow(null);
@@ -191,17 +212,27 @@ export default function CuentaPage() {
               </tr>
             ) : (
               filtered.map((row) => (
-                <tr key={row.id} className="border-b last:border-0 hover:bg-gray-50">
+                <tr
+                  key={row.id}
+                  className={`border-b last:border-0 hover:bg-gray-50 ${row.type === "traspaso" ? "opacity-70" : ""}`}
+                >
                   <td className="py-3 px-3 font-medium">{row.name}</td>
-                  <td className={`py-3 px-3 font-semibold ${row.type === "ingreso" ? "text-green-600" : "text-red-600"}`}>
-                    {row.type === "ingreso" ? "+" : "-"}{row.total?.toFixed(2)} {cuenta.moneda}
+                  <td className={`py-3 px-3 font-semibold ${totalColor(row)}`}>
+                    {totalLabel(row)} {cuenta.moneda}
                   </td>
                   <td className="py-3 px-3 capitalize">{row.type}</td>
-                  <td className="py-3 px-3">{row.category}</td>
+                  <td className="py-3 px-3">{row.category || "—"}</td>
                   <td className="py-3 px-3 text-gray-500">{new Date(row.date).toLocaleDateString("es-ES")}</td>
                   <td className="py-3 px-3 flex gap-2">
-                    <button className="text-blue-500 hover:text-blue-700" onClick={() => { setSelectedRow(row); setFormData({ ...row, date: new Date(row.date) }); setOpen(true); }}>✏️</button>
-                    <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(row.id)}>🗑️</button>
+                    {row.type !== "traspaso" && (
+                      <button
+                        className="text-blue-500 hover:text-blue-700"
+                        onClick={() => { setSelectedRow(row); setFormData({ ...row, date: new Date(row.date) }); setOpen(true); }}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(row)}>🗑️</button>
                   </td>
                 </tr>
               ))
@@ -212,7 +243,7 @@ export default function CuentaPage() {
 
       <ExpensesChart rows={filtered.filter(r => r.type === "gasto")} />
 
-      {/* Modal */}
+      {/* Modal nueva/editar transacción */}
       {open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-lg w-96">
@@ -249,6 +280,15 @@ export default function CuentaPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal traspaso */}
+      {openTraspaso && (
+        <TraspasoForm
+          cuentaOrigenId={cuentaId}
+          onCreated={() => cargar()}
+          onClose={() => setOpenTraspaso(false)}
+        />
       )}
     </Card>
   );
