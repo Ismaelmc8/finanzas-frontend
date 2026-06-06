@@ -83,8 +83,9 @@ export default function CuentaPage() {
         total: formData.units * formData.price,
         date: formData.date instanceof Date ? formData.date.toISOString() : formData.date,
         cuentaId: Number(cuentaId),
-        recurrente: formData.recurrente || false,
-        frecuencia: formData.recurrente ? (formData.frecuencia || "mensual") : null,
+        recurrente:       formData.recurrente || false,
+        frecuenciaValor:  formData.recurrente ? (formData.frecuenciaValor || 1) : null,
+        frecuenciaUnidad: formData.recurrente ? (formData.frecuenciaUnidad || "mes") : null,
       };
       if (selectedRow) {
         await updateExpense(selectedRow.id, payload);
@@ -211,7 +212,7 @@ export default function CuentaPage() {
           <Button
             onClick={() => {
               setSelectedRow(null);
-              setFormData({ name: "", units: 1, price: 0, type: "gasto", category: allCategoryNames[0] || "", date: new Date(), notes: "", recurrente: false, frecuencia: "mensual" });
+              setFormData({ name: "", units: 1, price: 0, type: "gasto", category: allCategoryNames[0] || "", date: new Date(), notes: "", recurrente: false, frecuenciaValor: 1, frecuenciaUnidad: "mes" });
               setOpen(true);
             }}
           >
@@ -347,16 +348,25 @@ export default function CuentaPage() {
                   <span className="font-medium">¿Es recurrente?</span>
                 </label>
                 {formData.recurrente && (
-                  <select
-                    className="w-full border rounded-lg p-2 text-sm"
-                    value={formData.frecuencia || "mensual"}
-                    onChange={(e) => setFormData({ ...formData, frecuencia: e.target.value })}
-                  >
-                    <option value="diario">Diario</option>
-                    <option value="semanal">Semanal</option>
-                    <option value="mensual">Mensual</option>
-                    <option value="anual">Anual</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500 whitespace-nowrap">Cada</span>
+                    <input
+                      type="number"
+                      min="1"
+                      className="border rounded-lg p-2 text-sm w-20"
+                      value={formData.frecuenciaValor || 1}
+                      onChange={(e) => setFormData({ ...formData, frecuenciaValor: Math.max(1, Number(e.target.value)) })}
+                    />
+                    <select
+                      className="border rounded-lg p-2 text-sm flex-1"
+                      value={formData.frecuenciaUnidad || "mes"}
+                      onChange={(e) => setFormData({ ...formData, frecuenciaUnidad: e.target.value })}
+                    >
+                      <option value="dia">día(s)</option>
+                      <option value="mes">mes(es)</option>
+                      <option value="año">año(s)</option>
+                    </select>
+                  </div>
                 )}
               </div>
 
