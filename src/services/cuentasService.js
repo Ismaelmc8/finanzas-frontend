@@ -24,3 +24,11 @@ export const deleteCuenta = async (id) => {
   const res = await api.delete(`/cuentas/${id}`);
   return res.data;
 };
+
+export const exportarCuenta = async (cuentaId, params) => {
+  const res = await api.get(`/cuentas/${cuentaId}/export`, {
+    params,
+    responseType: "blob",
+  });
+  return res;
+};

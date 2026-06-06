@@ -10,6 +10,7 @@ import ExpensesChart from "../components/expenses/ExpensesChart";
 import Summary from "../components/expenses/Summary";
 import ImportExpensesButton from "../components/expenses/importExpensesButton";
 import TraspasoForm from "../components/expenses/TraspasoForm";
+import ExportButton from "../components/expenses/ExportButton";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import toast from "react-hot-toast";
@@ -199,6 +200,12 @@ export default function CuentaPage() {
 
       {/* Acciones */}
       <div className="flex justify-end gap-2 mb-4">
+        <ExportButton
+          cuentaId={cuentaId}
+          filterMonth={filterMonth}
+          filterYear={filterYear}
+          filterCategory={filterCategory}
+        />
         {!esLector && <ImportExpensesButton extraData={{ cuentaId }} onImported={() => cargar()} />}
         {!esLector && (
           <Button
