@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
+import AppLayout from "../components/Sidebar";
 
-export default function PrivateLayout({ user }) {
-  if (!user) return <Navigate to="/login" />; // Protección
-  return <Sidebar><Outlet /></Sidebar>;
+export default function PrivateLayout({ user, onLogout }) {
+  if (!user) return <Navigate to="/login" />;
+  return <AppLayout onLogout={onLogout}><Outlet /></AppLayout>;
 }

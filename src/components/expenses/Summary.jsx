@@ -12,11 +12,11 @@ function Summary({ ingresos, gastos }) {
         <span className="text-2xl font-bold text-red-700">{gastos.toLocaleString()}€</span>
       </div>
       <div className={`p-4 rounded-lg shadow flex flex-col items-center ${
-        balance >= 0 ? "bg-indigo-100" : "bg-yellow-100"
+        balance >= 0 ? "bg-teal-100" : "bg-yellow-100"
       }`}>
         <span className="text-gray-600 font-semibold">Balance</span>
         <span className={`text-2xl font-bold ${
-          balance >= 0 ? "text-indigo-700" : "text-yellow-700"
+          balance >= 0 ? "text-teal-700" : "text-yellow-700"
         }`}>
           {balance.toLocaleString()}€
         </span>

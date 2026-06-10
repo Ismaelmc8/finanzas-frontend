@@ -19,7 +19,9 @@ export default function TraspasoForm({ cuentaOrigenId, onCreated, onClose }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getCuentas().then(setCuentas).catch(() => {});
+    getCuentas()
+      .then(data => setCuentas([...(data.propias || []), ...(data.compartidas || [])]))
+      .catch(() => {});
   }, []);
 
   const destinos = cuentas.filter((c) => String(c.id) !== String(form.cuentaOrigenId));
@@ -62,7 +64,7 @@ export default function TraspasoForm({ cuentaOrigenId, onCreated, onClose }) {
         <h2 className="text-lg font-semibold mb-1">Nuevo traspaso</h2>
 
         {origen && destino && form.importe > 0 && (
-          <p className="text-sm text-indigo-600 mb-4">
+          <p className="text-sm text-teal-600 mb-4">
             Mover <strong>{Number(form.importe).toFixed(2)} {origen.moneda}</strong> de{" "}
             <strong>{origen.nombre}</strong> → <strong>{destino.nombre}</strong>
           </p>

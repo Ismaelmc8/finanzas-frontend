@@ -23,13 +23,14 @@ export default function Login({ onLogin, user }) {
     try {
       const res = await api.post("/auth/login", { email, password });
 
-      const { token } = res.data; // Extraemos el token
-      // Guardamos token y "usuario" (el email) en localStorage
+      const { token, usuario } = res.data; // token + datos del usuario (id, nombre, email)
+      // Guardamos el usuario completo para poder mostrar su nombre/avatar
+      const userData = usuario || { email };
       localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify({ email }));
+      localStorage.setItem("user", JSON.stringify(userData));
 
       toast.success("Login exitoso 🎉");
-      onLogin?.({ email }); // Actualiza el estado en App
+      onLogin?.(userData); // Actualiza el estado en App
       //navigate("/test"); // Redirige a la página de prueba
       navigate("/dashboard"); // Redirige inmediatamente
     } catch (err) {
@@ -55,7 +56,7 @@ export default function Login({ onLogin, user }) {
               placeholder="Correo electrónico"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500"
               required
             />
           </div>
@@ -67,7 +68,7 @@ export default function Login({ onLogin, user }) {
               placeholder="Contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500"
               required
             />
           </div>
@@ -75,7 +76,7 @@ export default function Login({ onLogin, user }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-indigo-600 py-3 text-white font-semibold shadow-md hover:bg-indigo-700 transition disabled:opacity-50"
+            className="w-full rounded-xl bg-teal-600 py-3 text-white font-semibold shadow-md hover:bg-teal-700 transition disabled:opacity-50"
           >
             {loading ? "Cargando..." : "Iniciar sesión"}
           </button>
@@ -83,7 +84,7 @@ export default function Login({ onLogin, user }) {
 
         <p className="mt-4 text-center text-sm text-gray-600">
           ¿No tienes cuenta?{" "}
-          <Link to="/register" className="text-indigo-600 hover:underline">
+          <Link to="/register" className="text-teal-600 hover:underline">
             Regístrate
           </Link>
         </p>

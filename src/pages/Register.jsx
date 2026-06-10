@@ -33,7 +33,7 @@ export default function Register() {
     <div className="flex items-center justify-center bg-gray-100">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-md">
         <div className="text-center">
-          <UserPlusIcon className="mx-auto h-12 w-12 text-indigo-600" />
+          <UserPlusIcon className="mx-auto h-12 w-12 text-teal-600" />
           <h2 className="mt-6 text-2xl font-bold text-gray-900">
             Crea tu cuenta
           </h2>
@@ -49,7 +49,7 @@ export default function Register() {
               placeholder="Nombre"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500"
             />
           </div>
 
@@ -61,7 +61,7 @@ export default function Register() {
               placeholder="Correo electrónico"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500"
             />
           </div>
 
@@ -73,14 +73,14 @@ export default function Register() {
               placeholder="Contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-gray-300 p-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500"
             />
           </div>
 
           {/* Botón */}
           <button
             type="submit"
-            className="w-full rounded-xl bg-indigo-600 py-3 text-white font-semibold shadow-md hover:bg-indigo-700 transition"
+            className="w-full rounded-xl bg-teal-600 py-3 text-white font-semibold shadow-md hover:bg-teal-700 transition"
           >
             Registrarse
           </button>
@@ -93,7 +93,7 @@ export default function Register() {
 
         <p className="mt-4 text-center text-sm text-gray-600">
           ¿Ya tienes cuenta?{" "}
-          <a href="/login" className="text-indigo-600 hover:underline">
+          <a href="/login" className="text-teal-600 hover:underline">
             Inicia sesión
           </a>
         </p>

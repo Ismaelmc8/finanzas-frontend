@@ -73,7 +73,7 @@ export default function CuentaAccesosPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <button onClick={() => navigate(`/cuentas/${cuentaId}`)} className="text-sm text-indigo-500 hover:underline mb-1 block">
+        <button onClick={() => navigate(`/cuentas/${cuentaId}`)} className="text-sm text-teal-500 hover:underline mb-1 block">
           ← Volver a {cuenta?.nombre}
         </button>
         <h1 className="text-xl font-bold text-gray-900">Accesos compartidos</h1>
@@ -138,7 +138,7 @@ export default function CuentaAccesosPage() {
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Rol</label>
                 {["editor", "lector"].map((r) => (
-                  <label key={r} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer mb-2 ${form.rol === r ? "border-indigo-400 bg-indigo-50" : "border-gray-200"}`}>
+                  <label key={r} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer mb-2 ${form.rol === r ? "border-teal-400 bg-teal-50" : "border-gray-200"}`}>
                     <input type="radio" name="rol" value={r} checked={form.rol === r} onChange={() => setForm({ ...form, rol: r })} className="mt-0.5" />
                     <div>
                       <p className="font-medium text-sm">{ROL_LABEL[r]}</p>

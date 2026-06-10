@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
-import { logout as apiLogout } from "./services/authService";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { logout as apiLogout, getMe } from "./services/authService";
 import { Toaster } from "react-hot-toast";
 import { generarRecurrentes } from "./services/expensesService";
 import toast from "react-hot-toast";
@@ -22,86 +22,61 @@ export default function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem("token") || null);
+  // Al cargar con sesión activa, refrescamos los datos del usuario (nombre, email…)
+  // desde el servidor. Esto corrige sesiones antiguas guardadas solo con { email }.
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+    getMe()
+      .then((me) => {
+        setUser(me);
+        localStorage.setItem("user", JSON.stringify(me));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user) return;
     generarRecurrentes()
       .then(({ generadas }) => {
-        if (generadas > 0) toast.success(`${generadas} transacción${generadas > 1 ? "es recurrentes generadas" : " recurrente generada"}`);
+        if (generadas > 0)
+          toast.success(`${generadas} transacción${generadas > 1 ? "es recurrentes generadas" : " recurrente generada"}`);
       })
       .catch(() => {});
   }, [user?.id]);
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-  };
+  const handleLogin = (userData) => setUser(userData);
 
   const handleLogout = async () => {
     await apiLogout();
     setUser(null);
-    setToken(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
   };
 
-  const PrivateRoute = ({ children }) => (user ? children : <Navigate to="/login" />);
-
-  const Menu = () => (
-    <div className="flex space-x-6">
-      {!user ? (
-        <>
-          <Link to="/login" className="hover:text-indigo-400">Login</Link>
-          <Link to="/register" className="hover:text-indigo-400">Registro</Link>
-        </>
-      ) : (
-        <>
-          <Link to="/dashboard" className="hover:text-indigo-400">Dashboard</Link>
-          <Link to="/login" onClick={(e) => { e.preventDefault(); handleLogout(); }} className="hover:text-indigo-400 cursor-pointer">
-            Logout
-          </Link>
-        </>
-      )}
-    </div>
-  );
-
   return (
     <Router>
-      <div className="flex flex-col min-h-screen w-full mx-auto">
-        <Toaster position="top-right" />
-        <nav className="bg-gray-800 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16 items-center">
-              <Link to="/" className="font-bold text-lg">FinanzasApp</Link>
-              <Menu />
-            </div>
-          </div>
-        </nav>
+      <Toaster position="top-right" />
+      <Routes>
+        {/* rutas públicas */}
+        <Route path="/login"    element={<Login onLogin={handleLogin} user={user} />} />
+        <Route path="/register" element={<Register />} />
 
-        <main className="flex-1 bg-gray-100 px-4 py-8">
-          <Routes>
-            {/* rutas públicas */}
-            <Route path="/login" element={<Login onLogin={handleLogin} user={user} />} />
-            <Route path="/register" element={<Register />} />
+        {/* rutas privadas con sidebar */}
+        <Route element={<PrivateLayout user={user} onLogout={handleLogout} />}>
+          <Route path="/dashboard"                    element={<Dashboard />} />
+          <Route path="/movimientos"                  element={<Movimientos />} />
+          <Route path="/perfil"                       element={<Perfil onLogout={handleLogout} />} />
+          <Route path="/configMovements"              element={<ConfigMovimiento />} />
+          <Route path="/movements-groups/:groupId"    element={<Movimientos />} />
+          <Route path="/bancos"                       element={<BancosPage />} />
+          <Route path="/cuentas/:cuentaId"            element={<CuentaPage />} />
+          <Route path="/cuentas/:cuentaId/accesos"    element={<CuentaAccesosPage />} />
+          <Route path="/invitaciones"                 element={<InvitacionesPage />} />
+        </Route>
 
-            {/* rutas privadas con Sidebar */}
-            <Route element={<PrivateLayout user={user} />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/movimientos" element={<Movimientos />} />
-              <Route path="/perfil" element={<Perfil />} />
-              <Route path="/configMovements" element={<ConfigMovimiento />} />
-              <Route path="/movements-groups/:groupId" element={<Movimientos />} />
-              <Route path="/bancos" element={<BancosPage />} />
-              <Route path="/cuentas/:cuentaId" element={<CuentaPage />} />
-              <Route path="/cuentas/:cuentaId/accesos" element={<CuentaAccesosPage />} />
-              <Route path="/invitaciones" element={<InvitacionesPage />} />
-            </Route>
-
-            {/* redirect por defecto */}
-            <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
-          </Routes>
-        </main>
-      </div>
+        {/* redirect por defecto */}
+        <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+      </Routes>
     </Router>
   );
 }

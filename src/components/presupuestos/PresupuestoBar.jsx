@@ -1,43 +1,49 @@
+function hexA(hex, a) {
+  const h = (hex || "#0ea5a3").replace("#", "");
+  const n = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
+  const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 export default function PresupuestoBar({ nombre, icono, color, gastado, limite, cuenta }) {
   const pct      = limite > 0 ? Math.min((gastado / limite) * 100, 100) : 0;
   const superado = gastado > limite;
   const aviso    = !superado && pct >= 80;
 
-  const barColor = superado ? "bg-red-500" : aviso ? "bg-orange-400" : "bg-green-500";
-  const textColor = superado ? "text-red-600" : aviso ? "text-orange-500" : "text-gray-600";
+  const barColor  = superado ? "var(--red)"   : aviso ? "var(--amber)" : "var(--green)";
+  const textColor = superado ? "var(--red)"   : aviso ? "var(--amber)" : "var(--green)";
 
   return (
-    <div className="py-3">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <span
-            className="w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0"
-            style={{ backgroundColor: (color || "#6366f1") + "33" }}
-          >
-            {icono}
-          </span>
-          <div>
-            <span className="text-sm font-medium text-gray-800">{nombre}</span>
-            {cuenta && <span className="ml-1.5 text-xs text-gray-400">· {cuenta}</span>}
-          </div>
+    <div style={{ paddingTop: 10, paddingBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+          background: hexA(color || "#0ea5a3", .14),
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+        }}>
+          {icono}
         </div>
-        <div className="text-right shrink-0">
-          <span className={`text-sm font-semibold ${textColor}`}>
-            {gastado.toFixed(2)} €
-          </span>
-          <span className="text-xs text-gray-400"> / {limite.toFixed(2)} €</span>
-        </div>
+        <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>
+          {nombre}
+          {cuenta && <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginLeft: 6 }}>· {cuenta}</span>}
+        </span>
+        <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+          <span style={{ color: textColor }}>{gastado.toFixed(2)}</span> / {limite.toFixed(2)} €
+        </span>
       </div>
 
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-          style={{ width: `${pct}%` }}
-        />
+      <div style={{ height: 8, borderRadius: 99, background: "var(--surface-2)", overflow: "hidden" }}>
+        <div style={{
+          height: "100%",
+          width: `${pct}%`,
+          background: barColor,
+          borderRadius: 99,
+          transition: "width .6s cubic-bezier(.22,1,.36,1)",
+        }} />
       </div>
 
       {superado && (
-        <p className="text-xs text-red-500 mt-1 font-medium">
+        <p style={{ fontSize: 11.5, color: "var(--red)", marginTop: 5, fontWeight: 700 }}>
           Superado en {(gastado - limite).toFixed(2)} €
         </p>
       )}

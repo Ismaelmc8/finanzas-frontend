@@ -1,3 +1,4 @@
 import api from "./api";
 
-export const getDashboard = () => api.get("/dashboard").then(r => r.data);
+export const getDashboard = ({ mes, año } = {}) =>
+  api.get("/dashboard", { params: { mes, año } }).then(r => r.data);
